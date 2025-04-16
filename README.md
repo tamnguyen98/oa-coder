@@ -28,6 +28,7 @@ OA Coder is an Electron application that captures screenshots and leverages the 
    ```
    npm install
    ```
+   Download and install NirCmd to System32 folder https://www.nirsoft.net/utils/nircmd-x64.zip
 3. **Configure the application:**
    Create a config.json file in the project root with your OpenAI API key and (optionally) your desired model. For example:
     ```

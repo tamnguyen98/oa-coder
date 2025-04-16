@@ -3,6 +3,8 @@ const path = require('path');
 const screenshot = require('screenshot-desktop');
 const fs = require('fs');
 const { OpenAI } = require('openai');
+const { execSync } = require('child_process');
+const os = require('os');
 
 let config;
 try {
@@ -50,7 +52,9 @@ async function captureScreenshot() {
     await new Promise(res => setTimeout(res, 200));
 
     const timestamp = Date.now();
-    const imagePath = path.join(app.getPath('pictures'), `screenshot_${timestamp}.png`);
+    const tempDir = os.tmpdir();
+    const fileName = `screenshot_${timestamp}.png`;
+    const imagePath = path.join(tempDir, fileName);
     await screenshot({ filename: imagePath });
 
     const imageBuffer = fs.readFileSync(imagePath);
@@ -66,6 +70,36 @@ async function captureScreenshot() {
     throw err;
   }
 }
+
+async function captureActiveWindow() {
+  try {
+    hideInstruction();
+    mainWindow.hide();
+    await new Promise(res => setTimeout(res, 300)); // Give time for window to hide
+
+    const timestamp = Date.now();
+    const tempDir = os.tmpdir();
+    const fileName = `screenshot_${timestamp}.png`;
+    const imagePath = path.join(tempDir, fileName);
+
+    // Use nircmd to capture the foreground (active) window
+    execSync(`nircmd.exe savescreenshotwin "${imagePath}"`, { stdio: 'ignore' });
+
+    // Read and convert to base64
+    const imageBuffer = fs.readFileSync(imagePath);
+    const base64Image = imageBuffer.toString('base64');
+
+    mainWindow.show();
+    return base64Image;
+  } catch (err) {
+    mainWindow.show();
+    if (mainWindow.webContents) {
+      mainWindow.webContents.send('error', err.message);
+    }
+    throw err;
+  }
+}
+
 
 function showMainWindow() {
   mainWindow.show();
@@ -86,7 +120,7 @@ async function processScreenshots() {
   try {
     // Build message with text + each screenshot
     const messages = [
-      { type: "text", text: "Can you solve the question for me and give the final answer/code?" }
+      { type: "text", text: "Solve the coding problem(s) in the image(s). If it looks like an online IDE (e.g., Hackerrank), just comment the code. Otherwise, write a full response" }
     ];
     for (const img of screenshots) {
       messages.push({
@@ -98,13 +132,24 @@ async function processScreenshots() {
     // Make the request
     const response = await openai.chat.completions.create({
       model: config.model,
-      messages: [{ role: "user", content: messages }],
+      messages: [{
+        role: "system",
+        content:
+          "You are a senior developer solving coding interview problems from image screenshots. For each image:\n\n" +
+          "1. Extract and analyze the problem clearly.\n" +
+          "2. Identify important keywords or patterns in the problem description.\n" +
+          "3. Describe the optimal approach and why it's preferred.\n" +
+          "4. Provide well-commented code.\n" +
+          "5. Include time and space complexity."+
+          "Lastly, make sure when explaining the problem in first person as if I'm reading my thoughts out loud, and word to where it would sound normal reading it out loud for someone reading it for the first time"
+      },
+      { role: "user", content: messages }],
       max_tokens: 5000
     });
 
     // Send the text to the renderer
     mainWindow.webContents.send('analysis-result', response.choices[0].message.content);
-    
+
     // // Create mock data for the response
     // const mockResponse = {
     //   choices: [
@@ -119,8 +164,8 @@ async function processScreenshots() {
     // // Simulate receiving the response
     // const response = mockResponse;
 
-    // Send the text to the renderer
-    mainWindow.webContents.send('analysis-result', response.choices[0].message.content);
+    // // Send the text to the renderer
+    // mainWindow.webContents.send('analysis-result', response.choices[0].message.content);
     stage = 2;
   } catch (err) {
     console.error("Error in processScreenshots:", err);
@@ -164,7 +209,13 @@ function createWindow() {
   // Ctrl+Shift+S => single or final screenshot
   globalShortcut.register('CommandOrControl+Shift+S', async () => {
     try {
-      const img = await captureScreenshot();
+      let img;
+      try {
+        img = await captureActiveWindow();
+      } catch (err) {
+        console.warn("captureActiveWindow failed, falling back to captureScreenshot:", err.message);
+        img = await captureScreenshot();
+      }
       screenshots.push(img);
       await processScreenshots();
     } catch (error) {
@@ -179,7 +230,13 @@ function createWindow() {
         multiPageMode = true;
         updateInstruction("Multi-mode: Ctrl+Shift+A to add, Ctrl+Shift+S to finalize");
       }
-      const img = await captureScreenshot();
+      let img;
+      try {
+        img = await captureActiveWindow();
+      } catch (err) {
+        console.warn("captureActiveWindow failed, falling back to captureScreenshot:", err.message);
+        img = await captureScreenshot();
+      }
       screenshots.push(img);
       updateInstruction("Multi-mode: Ctrl+Shift+A to add, Ctrl+Shift+S to finalize");
       stage = 1;
