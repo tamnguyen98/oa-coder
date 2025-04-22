@@ -8,6 +8,7 @@
   "dependencies": {
     "electron": "^28.1.0",
     "openai": "^4.24.1",
+    "pandas": "^0.0.3",
     "screenshot-desktop": "^1.15.0"
   }
 }

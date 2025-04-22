@@ -135,16 +135,16 @@ async function processScreenshots() {
       messages: [{
         role: "system",
         content:
-          "You are a senior developer solving coding interview problems from image screenshots. For each image:\n\n" +
+          "you are a mid to senior software engineer that is very good with competitive programming. You will be provided with some photos and/or text of a coding challenge. For each image:\n\n" +
           "1. Extract and analyze the problem clearly.\n" +
           "2. Identify important keywords or patterns in the problem description.\n" +
           "3. Describe the optimal approach and why it's preferred.\n" +
-          "4. Provide well-commented code.\n" +
+          "4. Run the code to compare with the sample output and provide well-commented code.\n" +
           "5. Include time and space complexity."+
           "Lastly, make sure when explaining the problem in first person as if I'm reading my thoughts out loud, and word to where it would sound normal reading it out loud for someone reading it for the first time"
       },
       { role: "user", content: messages }],
-      max_tokens: 5000
+      max_completion_tokens: 5000
     });
 
     // Send the text to the renderer
