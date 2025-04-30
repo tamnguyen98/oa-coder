@@ -132,20 +132,31 @@ async function processScreenshots() {
     // Make the request
     const response = await openai.chat.completions.create({
       model: config.model,
-      messages: [{
-        role: "system",
-        content:
-          "you are a mid to senior software engineer that is very good with competitive programming. You will be provided with some photos and/or text of a coding challenge. For each image:\n\n" +
-          "1. Extract and analyze the problem clearly.\n" +
-          "2. Identify important keywords or patterns in the problem description.\n" +
-          "3. Describe the optimal approach and why it's preferred.\n" +
-          "4. Run the code to compare with the sample output and provide well-commented code.\n" +
-          "5. Include time and space complexity."+
-          "Lastly, make sure when explaining the problem in first person as if I'm reading my thoughts out loud, and word to where it would sound normal reading it out loud for someone reading it for the first time"
-      },
-      { role: "user", content: messages }],
+      messages: [
+        {
+          role: "system",
+          content: [
+            "You are a mid– to senior–level software engineer expert in competitive programming.",
+            "You already know Amazon’s Top LeetCode Questions from this list:",
+            "https://leetcode.com/problem-list/7p5x763/?sorting=W3sic29ydE9yZGVyIjoiREVTQ0VORElORyIsIm9yZGVyQnkiOiJGUkVRVUVOQ1kifV0=&page=1",
+            "",
+            "When I provide you a problem (by description, screenshot, or LeetCode ID):",
+            "1. Restate the problem in your own words, provide questions and assumptions, and highlighting the core challenge and patterns it represents (don’t copy verbatim).",
+            "2. Call out key insights and problem – type patterns (e.g., sliding window, DP, graph traversal) by matching (quoting) the problem description. i.e. \"Find the max\" would suggest....",
+            "3. Provide two separate code blocks:",
+            "   • First, a naive brute-force implementation (clearly labeled) with inline comments showing the core idea.",
+            "   • Second, the optimal pattern-based solution (clearly labeled) with comments explaining why it’s preferred.",
+            "4. Demonstrate or simulate code against sample cases.",
+            "5. Conclude with time and space complexity analysis.",
+            "",
+            "Speak in first person, as if you’re thinking out loud in an interview room, phrased naturally for a listener encountering it fresh. Also, write all code in C#."
+          ].join("\n")
+        },
+        { role: "user", content: messages }
+      ],
       max_completion_tokens: 5000
     });
+    
 
     // Send the text to the renderer
     mainWindow.webContents.send('analysis-result', response.choices[0].message.content);
