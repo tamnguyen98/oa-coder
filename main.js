@@ -116,7 +116,7 @@ function hideMainWindow() {
   showWindow = false;
 }
 
-async function processScreenshots() {
+async function processScreenshotsForCode() {
   try {
     // Build message with text + each screenshot
     const messages = [
@@ -149,7 +149,72 @@ async function processScreenshots() {
             "4. Demonstrate or simulate code against sample cases.",
             "5. Conclude with time and space complexity analysis.",
             "",
-            "Speak in first person, as if you’re thinking out loud in an interview room, phrased naturally for a listener encountering it fresh. Also, write all code in C#."
+            "You do not need to restate the question, speak in first person, as if you’re thinking out loud in an interview room, phrased naturally for a listener encountering it fresh. Also, write all code in C#. Utilize Markdown to make it easier to read, so use headers, codeblocks, etc."
+          ].join("\n")
+        },
+        { role: "user", content: messages }
+      ],
+      max_completion_tokens: 5000
+    });
+    
+
+    // Send the text to the renderer
+    mainWindow.webContents.send('analysis-result', response.choices[0].message.content);
+
+    // // Create mock data for the response
+    // const mockResponse = {
+    //   choices: [
+    //       {
+    //           message: {
+    //               content: "This is the mocked response from the AI."
+    //           }
+    //       }
+    //   ]
+    // };
+
+    // // Simulate receiving the response
+    // const response = mockResponse;
+
+    // // Send the text to the renderer
+    // mainWindow.webContents.send('analysis-result', response.choices[0].message.content);
+    stage = 2;
+  } catch (err) {
+    console.error("Error in processScreenshots:", err);
+    if (mainWindow.webContents) {
+      mainWindow.webContents.send('error', err.message);
+    }
+  }
+}
+
+async function processScreenshotsForSystemDesign() {
+  try {
+    // Build message with text + each screenshot
+    const messages = [
+      { type: "text", text: "The given image(s) will provide context to the system you'll be designing." }
+    ];
+    for (const img of screenshots) {
+      messages.push({
+        type: "image_url",
+        image_url: { url: `data:image/png;base64,${img}` }
+      });
+    }
+
+    // Make the request
+    const response = await openai.chat.completions.create({
+      model: config.model,
+      messages: [
+        {
+          role: "system",
+          content: [
+            "You are a mid‑level software engineer who has been practicing system design for two months.",
+            "You use the “Hello Interview” platform to guide your designs.",
+            "When asked to design a system, follow these steps in order:",
+            "• Gather functional and non‑functional requirements",
+            "• Define core entities and sketch the data model",
+            "• Outline a high‑level architecture (imagine you have a grid to 'draw' your design, so you can move vertical and horizontal)",
+            "• Draft key API endpoints",
+            "• Deep‑dive into each non‑functional requirement (scalability, availability, consistency, security, etc.) and map it to specific services or design patterns",
+            "Whenever possible, illustrate examples using AWS services (in parenthesis, e.g DNS (Route 53) or Blob Storage (S3)). You do not need to start off restating the original problem. Utilize MD to make it easy to read by using headers, codeblocks (specially on the high-level Architecture), etc."
           ].join("\n")
         },
         { role: "user", content: messages }
@@ -191,7 +256,7 @@ function resetProcess() {
   screenshots = [];
   multiPageMode = false;
   mainWindow.webContents.send('clear-result');
-  updateInstruction("Ctrl+Shift+S: Screenshot | Ctrl+Shift+A: Multi-mode | Ctrl+Shift+W: Hide Window | Ctrl+Shift+Q: Close");
+  updateInstruction("<b>Ctrl+Shift+(S / . )</b>: Screenshot | <b>Ctrl+Shift+A</b>: Multi-mode | <b>Ctrl+Shift+W</b>: Hide Window | <b>Ctrl+Shift+Q</b>: Close");
   stage = 0;
 }
 
@@ -228,9 +293,26 @@ function createWindow() {
         img = await captureScreenshot();
       }
       screenshots.push(img);
-      await processScreenshots();
+      await processScreenshotsForCode();
     } catch (error) {
       console.error("Ctrl+Shift+S error:", error);
+    }
+  });
+
+  // Ctrl+Shift+. (period) => single or final screenshot (System design)
+  globalShortcut.register('CommandOrControl+Shift+.', async () => {
+    try {
+      let img;
+      try {
+        img = await captureActiveWindow();
+      } catch (err) {
+        console.warn("captureActiveWindow failed, falling back to captureScreenshot:", err.message);
+        img = await captureScreenshot();
+      }
+      screenshots.push(img);
+      await processScreenshotsForSystemDesign();
+    } catch (error) {
+      console.error("Ctrl+Shift+. error:", error);
     }
   });
 

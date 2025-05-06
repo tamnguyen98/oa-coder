@@ -159,7 +159,7 @@
     const updateBanner = (text, show = true) => {
       const banner = document.getElementById('instruction-banner');
       banner.style.opacity = show ? '1' : '0';
-      if (text) banner.textContent = text;
+      if (text) banner.innerHTML = text;
     };
     
     const handlers = {
@@ -212,7 +212,7 @@
       });
     });
     
-    updateBanner("Ctrl+Shift+S: Screenshot | Ctrl+Shift+A: Multi-mode | Ctrl+Shift+W: Hide Window | Ctrl+Shift+Q: Close");
+    updateBanner("<b>Ctrl+Shift+(S / . )</b>: Screenshot | <b>Ctrl+Shift+A</b>: Multi-mode | <b>Ctrl+Shift+W</b>: Hide Window | <b>Ctrl+Shift+Q</b>: Close");
   </script>
 </body>
 </html>
